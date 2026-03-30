@@ -31,6 +31,7 @@ jobs:
         with:
           enablement: true
       - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @csv/core build
       - run: pnpm --filter @csv/web build
         env:
           CSV_WEB_BASE_PATH: /${{ github.event.repository.name }}/
