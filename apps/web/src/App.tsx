@@ -87,6 +87,7 @@ export function App() {
   const [autoFocusDetail, setAutoFocusDetail] = useState(() =>
     typeof window !== "undefined" ? window.innerWidth < DETAIL_FOCUS_BREAKPOINT : false
   );
+  const [autoRetryCount, setAutoRetryCount] = useState(0);
 
   async function connectBridge() {
     setConnectionState("connecting");
@@ -154,6 +155,7 @@ export function App() {
 
   useEffect(() => {
     if (connectionState === "connected" && route === "viewer") {
+      setAutoRetryCount(0);
       void loadThreads();
       void (async () => {
         if (!bridgeBaseUrl) {
@@ -180,6 +182,19 @@ export function App() {
     window.addEventListener("resize", syncLayoutMode);
     return () => window.removeEventListener("resize", syncLayoutMode);
   }, []);
+
+  useEffect(() => {
+    if (route !== "viewer" || connectionState !== "disconnected" || autoRetryCount >= 10) {
+      return;
+    }
+
+    const timer = window.setTimeout(() => {
+      setAutoRetryCount((current) => current + 1);
+      void connectBridge();
+    }, 1500);
+
+    return () => window.clearTimeout(timer);
+  }, [autoRetryCount, connectionState, route]);
 
   async function refreshIndex() {
     setStatus("Refreshing index...");
@@ -356,7 +371,9 @@ pnpm bridge:doctor`}
             <p className="status-line">
               {connectionState === "connecting"
                 ? "Checking localhost bridge…"
-                : `Bridge offline. Hosted URL: ${resolvedHostedSiteUrl}`}
+                : autoRetryCount < 10
+                  ? `Bridge offline. Retrying localhost automatically… (${autoRetryCount + 1}/10)`
+                  : `Bridge offline. Hosted URL: ${resolvedHostedSiteUrl}`}
             </p>
           </aside>
         </section>

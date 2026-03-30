@@ -98,7 +98,9 @@ async function waitForHealth(port: number) {
 }
 
 function openBrowser(url: string) {
-  void execFileAsync("open", [url]);
+  const target = new URL(url);
+  target.searchParams.set("bridgeWarm", Date.now().toString());
+  void execFileAsync("open", [target.toString()]);
 }
 
 if (process.argv[1]?.endsWith("daemon.ts") || process.argv[1]?.endsWith("daemon.js")) {
