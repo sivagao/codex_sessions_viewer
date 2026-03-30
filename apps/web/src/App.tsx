@@ -165,16 +165,25 @@ export function App() {
 
   useEffect(() => {
     if (connectionState === "connected" && route === "viewer") {
+      let cancelled = false;
       setAutoRetryCount(0);
       setStartupIndexAttempted(false);
-      void loadThreads();
+      void (async () => {
+        await loadThreads();
+      })();
       void (async () => {
         if (!bridgeBaseUrl) {
           return;
         }
         const data = await bridgeFetch<{ items: ProjectSuggestion[] }>(bridgeBaseUrl, "/api/projects");
-        setProjects(data.items);
+        if (!cancelled) {
+          setProjects(data.items);
+        }
       })();
+
+      return () => {
+        cancelled = true;
+      };
     }
   }, [connectionState, bridgeBaseUrl, query, sourceKind, cwdPrefix, projectKey, textScope, route]);
 
@@ -438,6 +447,10 @@ pnpm bridge:doctor`}
                 : autoRetryCount < 10
                   ? `Bridge offline. Retrying localhost automatically… (${autoRetryCount + 1}/10)`
                   : `Bridge offline. Hosted URL: ${resolvedHostedSiteUrl}`}
+            </p>
+            <p className="status-line">
+              On Chrome/Edge 142+, allow the Local Network Access prompt for this site so it can
+              reach `127.0.0.1`.
             </p>
           </aside>
         </section>

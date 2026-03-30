@@ -3,10 +3,16 @@ import {
   type BridgeHealthPayload
 } from "@csv/core";
 
+type LocalNetworkRequestInit = RequestInit & {
+  targetAddressSpace?: "local";
+};
+
 export async function probeBridge(): Promise<BridgeHealthPayload | null> {
   for (const baseUrl of buildBridgeBaseUrls()) {
     try {
-      const response = await fetch(`${baseUrl}/bridge/health`);
+      const response = await fetch(`${baseUrl}/bridge/health`, {
+        targetAddressSpace: "local"
+      } as LocalNetworkRequestInit);
       if (!response.ok) {
         continue;
       }
@@ -25,7 +31,10 @@ export async function bridgeFetch<T>(
   path: string,
   init?: RequestInit
 ): Promise<T> {
-  const response = await fetch(`${bridgeBaseUrl}${path}`, init);
+  const response = await fetch(`${bridgeBaseUrl}${path}`, {
+    ...init,
+    targetAddressSpace: "local"
+  } as LocalNetworkRequestInit);
   if (!response.ok) {
     throw new Error(`Bridge request failed: ${response.status}`);
   }
