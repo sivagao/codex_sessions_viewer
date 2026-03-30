@@ -76,14 +76,14 @@ The hosted install page links to the rolling GitHub Release asset directly.
 1. Download [codex-sessions-viewer-bridge-macos.tar.gz](https://github.com/sivagao/codex_sessions_viewer/releases/download/bridge-latest/codex-sessions-viewer-bridge-macos.tar.gz).
 2. Extract it.
 3. Run `./install.sh`.
-4. Run `codex-sessions-viewer-doctor`.
-5. Run `codex-sessions-viewer-open`.
+4. The installer bootstraps the bridge and opens the hosted viewer automatically.
+5. If you need manual commands later, use the quoted absolute paths under `~/Library/Application Support/CodexSessionsViewerBridge/bin/`.
 
 The installer places the bridge under:
 
 - `~/Library/Application Support/CodexSessionsViewerBridge`
 
-It also installs a `launchd` agent so the local bridge daemon can run in the background after login.
+It also installs a `launchd` agent so the local bridge daemon can run in the background after login, and creates helper symlinks under `~/.local/bin/`.
 
 ## Another Mac From Source
 

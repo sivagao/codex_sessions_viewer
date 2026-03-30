@@ -296,8 +296,8 @@ export function App() {
             <ol className="install-steps">
               <li>Download the packaged bridge tarball from GitHub Releases.</li>
               <li>Extract it and run <code>./install.sh</code>.</li>
-              <li>Run <code>codex-sessions-viewer-doctor</code> to verify localhost health.</li>
-              <li>Run <code>codex-sessions-viewer-open</code> to open the hosted viewer.</li>
+              <li>The installer starts the local bridge and opens the hosted viewer automatically.</li>
+              <li>If needed later, run <code>codex-sessions-viewer-doctor</code> manually.</li>
             </ol>
             <p>
               Stable download URL:{" "}
