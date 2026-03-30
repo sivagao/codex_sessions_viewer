@@ -40,3 +40,7 @@ You must do all of these before claiming a fix:
 ## Documentation Rule
 
 - Any non-obvious packaging/runtime failure mode that costs multiple iterations must be added to `LESSONS.md` in the same change or immediately after.
+- If the user has to correct, repeat, or escalate the same problem multiple times, append the misdiagnosis/process failure to `LESSONS.md` as well, not just the final technical root cause.
+- For repeated misses, document both:
+  - the actual root cause
+  - what the debugging process got wrong and what must be done differently next time
