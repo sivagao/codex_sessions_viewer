@@ -39,6 +39,10 @@ export function createCodexIndexService(options: CodexIndexServiceOptions) {
       store.close();
     },
 
+    getStats() {
+      return store.getStats();
+    },
+
     async refresh(mode: "full" | "incremental" = "full") {
       const scanned = await scanCodexSources({
         codexHome: options.codexHome,

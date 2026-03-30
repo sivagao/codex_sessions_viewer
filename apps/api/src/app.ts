@@ -73,13 +73,14 @@ export function createApp(options: AppOptions = {}) {
 
   const codexHome = options.codexHome ?? path.join(os.homedir(), ".codex");
   const service = createCodexIndexService({
-    dataDir: options.dataDir ?? path.join(process.cwd(), "data"),
+    dataDir: options.dataDir ?? process.env.CSV_DATA_DIR ?? path.join(process.cwd(), "data"),
     codexHome,
     desktopCodexPath:
       options.desktopCodexPath ??
       path.join(os.homedir(), "Library", "Application Support", "Codex"),
     launchTerminal: options.launchTerminal ?? launchInTerminal
   });
+  app.set("codexIndexService", service);
 
   app.get("/bridge/health", (_req, res) => {
     const payload: BridgeHealthPayload = {
