@@ -50,7 +50,7 @@ writeExecutable(
   `#!/bin/zsh
 set -euo pipefail
 DIR="$(cd "$(dirname "$0")/.." && pwd)"
-exec node "$DIR/dist/daemon.js" "$@"
+exec node "$DIR/dist/apps/api/src/daemon.js" "$@"
 `
 );
 
@@ -59,7 +59,7 @@ writeExecutable(
   `#!/bin/zsh
 set -euo pipefail
 DIR="$(cd "$(dirname "$0")/.." && pwd)"
-exec node "$DIR/dist/daemon.js" open
+exec node "$DIR/dist/apps/api/src/daemon.js" open
 `
 );
 
@@ -68,7 +68,7 @@ writeExecutable(
   `#!/bin/zsh
 set -euo pipefail
 DIR="$(cd "$(dirname "$0")/.." && pwd)"
-exec node "$DIR/dist/daemon.js" doctor
+exec node "$DIR/dist/apps/api/src/daemon.js" doctor
 `
 );
 

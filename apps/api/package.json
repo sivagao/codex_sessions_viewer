@@ -7,7 +7,7 @@
     "dist"
   ],
   "bin": {
-    "codex-sessions-viewer-daemon": "dist/daemon.js"
+    "codex-sessions-viewer-daemon": "dist/apps/api/src/daemon.js"
   },
   "scripts": {
     "build": "tsc -p tsconfig.json",
