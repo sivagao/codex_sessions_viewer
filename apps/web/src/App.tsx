@@ -6,6 +6,8 @@ interface ThreadListItem {
   title: string;
   sourceKind: "app" | "cli" | "subagent";
   cwd: string;
+  projectKey: string;
+  projectLabel: string;
   updatedAt: string;
   favorite: boolean;
   hidden: boolean;
@@ -74,6 +76,7 @@ export function App() {
   const [hostedSiteUrl, setHostedSiteUrl] = useState<string>(currentHostedSiteUrl);
   const [query, setQuery] = useState("");
   const [cwdPrefix, setCwdPrefix] = useState("");
+  const [projectKey, setProjectKey] = useState("");
   const [sourceKind, setSourceKind] = useState<(typeof sourceOptions)[number]["value"]>("all");
   const [textScope, setTextScope] = useState<"user" | "all">("user");
   const [projects, setProjects] = useState<ProjectSuggestion[]>([]);
@@ -119,6 +122,9 @@ export function App() {
     }
     if (cwdPrefix.trim()) {
       params.set("cwdPrefix", cwdPrefix.trim());
+    }
+    if (projectKey.trim()) {
+      params.set("projectKey", projectKey.trim());
     }
     params.set("textScope", textScope);
 
@@ -170,7 +176,7 @@ export function App() {
         setProjects(data.items);
       })();
     }
-  }, [connectionState, bridgeBaseUrl, query, sourceKind, cwdPrefix, textScope, route]);
+  }, [connectionState, bridgeBaseUrl, query, sourceKind, cwdPrefix, projectKey, textScope, route]);
 
   useEffect(() => {
     if (selectedThreadId) {
@@ -205,6 +211,7 @@ export function App() {
     const usingDefaultFilters =
       query.trim() === "" &&
       cwdPrefix.trim() === "" &&
+      projectKey.trim() === "" &&
       sourceKind === "all" &&
       textScope === "user";
 
@@ -225,6 +232,7 @@ export function App() {
   }, [
     connectionState,
     cwdPrefix,
+    projectKey,
     query,
     route,
     sourceKind,
@@ -274,6 +282,24 @@ export function App() {
       body: JSON.stringify({ threadIds: [selectedThreadId] })
     });
     setStatus(data.filePath ? `Exported to ${data.filePath}` : "Export complete.");
+  }
+
+  async function exportProject(contentScope: "all" | "user") {
+    if (!bridgeBaseUrl || !projectKey) {
+      return;
+    }
+
+    const data = await bridgeFetch<{ filePath?: string }>(bridgeBaseUrl, "/api/exports", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ projectKey, contentScope })
+    });
+
+    setStatus(
+      data.filePath
+        ? `Exported ${contentScope === "user" ? "user prompts" : "project"} to ${data.filePath}`
+        : "Project export complete."
+    );
   }
 
   async function toggleFavorite() {
@@ -464,6 +490,15 @@ pnpm bridge:doctor`}
             onChange={(event) => setCwdPrefix(event.target.value)}
           />
 
+          {projectKey ? (
+            <div className="active-project-banner">
+              <span>Project: {projectKey}</span>
+              <button className="inline-action" onClick={() => setProjectKey("")}>
+                Clear
+              </button>
+            </div>
+          ) : null}
+
           <div className="filter-group">
             {sourceOptions.map((option) => (
               <button
@@ -498,13 +533,27 @@ pnpm bridge:doctor`}
                 <button
                   key={project.key}
                   className="project-chip"
-                  onClick={() => setCwdPrefix(project.prefix)}
+                  onClick={() => {
+                    setProjectKey(project.key);
+                    setCwdPrefix("");
+                  }}
                 >
                   {project.label}
                 </button>
               ))}
             </div>
           </div>
+
+          {projectKey ? (
+            <div className="filter-group">
+              <button className="filter-chip active" onClick={() => void exportProject("all")}>
+                Export Project
+              </button>
+              <button className="filter-chip" onClick={() => void exportProject("user")}>
+                Export User Prompts
+              </button>
+            </div>
+          ) : null}
 
           <p className="status-line">{status}</p>
         </aside>
@@ -528,6 +577,7 @@ pnpm bridge:doctor`}
                     {thread.favorite ? <span className="favorite-marker">Starred</span> : null}
                   </div>
                   <strong className="thread-title">{thread.title}</strong>
+                  <span className="thread-project">{thread.projectLabel}</span>
                   <span className="thread-cwd">{thread.cwd}</span>
                   <span className="thread-updated">{thread.updatedAt}</span>
                 </button>

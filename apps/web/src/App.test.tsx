@@ -129,6 +129,8 @@ describe("App", () => {
               title: "Resume my thread",
               sourceKind: "cli",
               cwd: "/Users/siva/projects/siva_context/codex_sessions_viewer",
+              projectKey: "codex_sessions_viewer",
+              projectLabel: "viewer",
               favorite: true,
               tags: ["important"],
               note: "revisit"
@@ -175,6 +177,8 @@ describe("App", () => {
                   title: "Resume my thread",
                   sourceKind: "cli",
                   cwd: "/Users/siva/projects/siva_context/codex_sessions_viewer",
+                  projectKey: "codex_sessions_viewer",
+                  projectLabel: "viewer",
                   updatedAt: "2026-03-25T02:15:29Z",
                   favorite: true,
                   hidden: false,
@@ -187,6 +191,7 @@ describe("App", () => {
 
         const queryText = query.searchParams.get("q");
         const cwdPrefix = query.searchParams.get("cwdPrefix");
+        const projectKey = query.searchParams.get("projectKey");
         const favoritesOnly = query.searchParams.get("favoritesOnly");
 
         const filtered = items.filter((item) => {
@@ -194,6 +199,9 @@ describe("App", () => {
             return false;
           }
           if (cwdPrefix && !item.cwd.startsWith(cwdPrefix)) {
+            return false;
+          }
+          if (projectKey && item.projectKey !== projectKey) {
             return false;
           }
           if (queryText && !`${item.title} ${item.cwd}`.includes(queryText)) {
@@ -228,6 +236,8 @@ describe("App", () => {
               title: "Resume my thread",
               sourceKind: "cli",
               cwd: "/Users/siva/projects/siva_context/codex_sessions_viewer",
+              projectKey: "codex_sessions_viewer",
+              projectLabel: "viewer",
               favorite: false,
               hidden: false,
               tags: ["important"],
@@ -286,11 +296,31 @@ describe("App", () => {
     await waitFor(() => {
       expect(
         fetchMock.mock.calls.some(([url]) =>
-          String(url).includes(
-            "cwdPrefix=%2FUsers%2Fsiva%2Fprojects%2Fsiva_context%2Fcodex_sessions_viewer"
-          )
+          String(url).includes("projectKey=codex_sessions_viewer")
         )
       ).toBe(true);
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: /export project/i }));
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith(
+        "http://127.0.0.1:4318/api/exports",
+        expect.objectContaining({
+          method: "POST",
+          body: JSON.stringify({ projectKey: "codex_sessions_viewer", contentScope: "all" })
+        })
+      );
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: /export user prompts/i }));
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith(
+        "http://127.0.0.1:4318/api/exports",
+        expect.objectContaining({
+          method: "POST",
+          body: JSON.stringify({ projectKey: "codex_sessions_viewer", contentScope: "user" })
+        })
+      );
     });
 
     fireEvent.change(screen.getByLabelText(/project path prefix/i), {
@@ -356,6 +386,8 @@ describe("App", () => {
                 title: "Recovered thread",
                 sourceKind: "cli",
                 cwd: "/Users/siva/projects/siva_context/codex_sessions_viewer",
+                projectKey: "codex_sessions_viewer",
+                projectLabel: "codex_sessions_viewer",
                 updatedAt: "2026-03-30T06:00:00Z",
                 favorite: false,
                 hidden: false,

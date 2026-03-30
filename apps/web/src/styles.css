@@ -160,6 +160,18 @@ pre {
   cursor: pointer;
 }
 
+.active-project-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 12px;
+  padding: 10px 12px;
+  border-radius: 14px;
+  background: rgba(24, 59, 99, 0.08);
+  color: #183b63;
+}
+
 .filter-chip {
   padding: 10px 12px;
   border-radius: 999px;
@@ -246,11 +258,17 @@ pre {
 }
 
 .favorite-marker,
+.thread-project,
 .thread-cwd,
 .thread-updated {
   display: block;
   margin-top: 6px;
   color: #566b84;
+}
+
+.thread-project {
+  font-weight: 600;
+  color: #183b63;
 }
 
 .thread-cwd {

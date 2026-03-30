@@ -3,6 +3,7 @@ import path from "node:path";
 import type { UserMetadata } from "@csv/core";
 import {
   createThreadStore,
+  type ThreadDetailRow,
   type ThreadSearchInput,
   type ThreadSearchRow
 } from "../db/threadStore.js";
@@ -26,6 +27,26 @@ export interface ProjectSuggestion {
   prefix: string;
   count: number;
   updatedAt: string;
+}
+
+export type ExportContentScope = "all" | "user";
+
+export interface ThreadSearchView extends ThreadSearchRow {
+  projectKey: string;
+  projectLabel: string;
+}
+
+export interface ThreadDetailView {
+  thread: ThreadDetailRow & {
+    projectKey: string;
+    projectLabel: string;
+  };
+  events: ReturnType<ReturnType<typeof createThreadStore>["getThreadEvents"]>;
+  relations: ReturnType<ReturnType<typeof createThreadStore>["getThreadRelations"]>;
+}
+
+export interface ThreadSearchFilters extends ThreadSearchInput {
+  projectKey?: string;
 }
 
 export function createCodexIndexService(options: CodexIndexServiceOptions) {
@@ -64,18 +85,24 @@ export function createCodexIndexService(options: CodexIndexServiceOptions) {
       };
     },
 
-    searchThreads(input: ThreadSearchInput) {
-      return store.searchThreads(input);
+    searchThreads(input: ThreadSearchFilters): ThreadSearchView[] {
+      return store
+        .searchThreads(input)
+        .filter((thread) => !input.projectKey || inferProjectKey(thread.cwd) === input.projectKey)
+        .map(attachProjectFields);
     },
 
-    getThreadDetail(threadId: string) {
+    getThreadDetail(threadId: string): ThreadDetailView | null {
       const thread = store.getThread(threadId);
       if (!thread) {
         return null;
       }
 
       return {
-        thread,
+        thread: {
+          ...thread,
+          ...projectFieldsForThread(thread)
+        },
         events: store.getThreadEvents(threadId),
         relations: store.getThreadRelations(threadId)
       };
@@ -99,18 +126,39 @@ export function createCodexIndexService(options: CodexIndexServiceOptions) {
       };
     },
 
-    exportThreads(threadIds?: string[]) {
-      const threads = threadIds?.length
-        ? threadIds
+    exportThreads(input?: {
+      threadIds?: string[];
+      projectKey?: string;
+      contentScope?: ExportContentScope;
+    }) {
+      const contentScope = input?.contentScope ?? "all";
+      const selectedThreads = input?.threadIds?.length
+        ? input.threadIds
             .map((id) => this.getThreadDetail(id))
             .filter((value): value is NonNullable<typeof value> => value !== null)
-        : store.searchThreads({ includeHidden: true }).map((thread) => ({
+        : this.searchThreads({
+            includeHidden: true,
+            projectKey: input?.projectKey
+          }).map((thread) => ({
             thread: store.getThread(thread.id)!,
             events: store.getThreadEvents(thread.id),
             relations: store.getThreadRelations(thread.id)
           }));
 
-      const filePath = path.join(exportsDir, `threads-export-${Date.now()}.zip`);
+      const threads = selectedThreads.map((bundle) => ({
+        ...bundle,
+        events:
+          contentScope === "user"
+            ? bundle.events.filter((event) => event.actor === "user")
+            : bundle.events
+      }));
+
+      const exportPrefix = input?.projectKey ? `${input.projectKey}-` : "threads-";
+      const scopeSuffix = contentScope === "user" ? "-user-prompts" : "";
+      const filePath = path.join(
+        exportsDir,
+        `${exportPrefix}export-${Date.now()}${scopeSuffix}.zip`
+      );
       return { threads, filePath };
     },
 
@@ -123,12 +171,13 @@ export function createCodexIndexService(options: CodexIndexServiceOptions) {
       const threads = store.searchThreads({ includeHidden: true });
 
       for (const thread of threads) {
-        const label = inferProjectLabel(thread.cwd, thread.projectAlias);
-        const existing = grouped.get(label);
+        const projectKey = inferProjectKey(thread.cwd);
+        const projectLabel = inferProjectLabel(thread.cwd, thread.projectAlias);
+        const existing = grouped.get(projectKey);
         if (!existing) {
-          grouped.set(label, {
-            key: label,
-            label,
+          grouped.set(projectKey, {
+            key: projectKey,
+            label: projectLabel,
             prefix: thread.cwd,
             count: 1,
             updatedAt: thread.updatedAt
@@ -147,6 +196,30 @@ export function createCodexIndexService(options: CodexIndexServiceOptions) {
         .sort((left, right) => right.updatedAt.localeCompare(left.updatedAt))
         .slice(0, 8);
     }
+  };
+}
+
+export function inferProjectKey(cwd: string) {
+  const worktreeMatch = cwd.match(/\/\.codex\/worktrees\/[^/]+\/([^/]+)/);
+  if (worktreeMatch) {
+    return worktreeMatch[1];
+  }
+
+  const parts = cwd.split("/").filter(Boolean);
+  return parts.at(-1) ?? cwd;
+}
+
+function attachProjectFields(thread: ThreadSearchRow): ThreadSearchView {
+  return {
+    ...thread,
+    ...projectFieldsForThread(thread)
+  };
+}
+
+function projectFieldsForThread(thread: { cwd: string; projectAlias: string }) {
+  return {
+    projectKey: inferProjectKey(thread.cwd),
+    projectLabel: inferProjectLabel(thread.cwd, thread.projectAlias)
   };
 }
 

@@ -25,7 +25,9 @@ const metadataSchema = z.object({
 });
 
 const exportSchema = z.object({
-  threadIds: z.array(z.string()).optional()
+  threadIds: z.array(z.string()).optional(),
+  projectKey: z.string().optional(),
+  contentScope: z.enum(["all", "user"]).default("all")
 });
 
 export interface AppOptions {
@@ -109,6 +111,7 @@ export function createApp(options: AppOptions = {}) {
           query: typeof req.query.q === "string" ? req.query.q : undefined,
           sourceKinds: typeof sourceKind === "string" && sourceKind !== "all" ? [sourceKind as "app" | "cli" | "subagent"] : undefined,
           cwdPrefix: typeof req.query.cwdPrefix === "string" ? req.query.cwdPrefix : undefined,
+          projectKey: typeof req.query.projectKey === "string" ? req.query.projectKey : undefined,
           favoritesOnly: req.query.favoritesOnly === "true",
           includeHidden: req.query.includeHidden === "true",
           textScope: req.query.textScope === "all" ? "all" : "user"
@@ -161,8 +164,8 @@ export function createApp(options: AppOptions = {}) {
 
   app.post("/api/exports", async (req, res, next) => {
     try {
-      const { threadIds } = exportSchema.parse(req.body ?? {});
-      const result = service.exportThreads(threadIds);
+      const { threadIds, projectKey, contentScope } = exportSchema.parse(req.body ?? {});
+      const result = service.exportThreads({ threadIds, projectKey, contentScope });
       await writeExportArchive(result.filePath, result.threads);
       res.json({ filePath: result.filePath, count: result.threads.length });
     } catch (error) {

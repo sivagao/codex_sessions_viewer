@@ -167,6 +167,7 @@ describe("createApp", () => {
       .get("/api/threads")
       .query({
         q: "Terminal",
+        projectKey: "codex_sessions_viewer",
         cwdPrefix: "/Users/siva/projects/siva_context",
         favoritesOnly: "false",
         textScope: "user"
@@ -176,7 +177,8 @@ describe("createApp", () => {
     expect(search.body.items).toEqual([
       expect.objectContaining({
         id: "thread-main",
-        title: "Resume my thread"
+        title: "Resume my thread",
+        projectKey: "codex_sessions_viewer"
       })
     ]);
 
@@ -227,7 +229,7 @@ describe("createApp", () => {
 
     const exported = await request(app)
       .post("/api/exports")
-      .send({ threadIds: ["thread-main"] })
+      .send({ projectKey: "codex_sessions_viewer", contentScope: "user" })
       .expect(200);
 
     expect(exported.body.filePath).toMatch(/\.zip$/);
