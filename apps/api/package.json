@@ -3,8 +3,15 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
+  "files": [
+    "dist"
+  ],
+  "bin": {
+    "codex-sessions-viewer-daemon": "dist/daemon.js"
+  },
   "scripts": {
     "build": "tsc -p tsconfig.json",
+    "daemon": "tsx src/daemon.ts",
     "dev": "tsx watch src/server.ts",
     "test": "vitest run",
     "typecheck": "tsc -p tsconfig.json"

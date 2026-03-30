@@ -1,9 +1,13 @@
 import os from "node:os";
 import path from "node:path";
 import express from "express";
-import cors from "cors";
 import { z } from "zod";
-import type { UserMetadata } from "@csv/core";
+import {
+  DEFAULT_BRIDGE_PORT,
+  DEFAULT_HOSTED_SITE_URL,
+  type BridgeHealthPayload,
+  type UserMetadata
+} from "@csv/core";
 import { createCodexIndexService, type TerminalLaunchResult } from "./services/codexIndexService";
 import { writeExportArchive } from "./utils/exporter";
 import { launchInTerminal } from "./utils/terminal";
@@ -28,12 +32,42 @@ export interface AppOptions {
   dataDir?: string;
   codexHome?: string;
   desktopCodexPath?: string;
+  bridgePort?: number;
+  hostedSiteUrl?: string;
   launchTerminal?: (command: string) => TerminalLaunchResult;
 }
 
 export function createApp(options: AppOptions = {}) {
   const app = express();
-  app.use(cors());
+  const hostedSiteUrl = options.hostedSiteUrl ?? process.env.CSV_HOSTED_SITE_URL ?? DEFAULT_HOSTED_SITE_URL;
+  const bridgePort = options.bridgePort ?? Number(process.env.PORT ?? DEFAULT_BRIDGE_PORT);
+  const allowedOrigins = new Set([
+    hostedSiteUrl,
+    "http://localhost:4173",
+    "http://127.0.0.1:4173"
+  ]);
+
+  app.use((req, res, next) => {
+    const origin = req.headers.origin;
+    if (!origin) {
+      next();
+      return;
+    }
+
+    if (!allowedOrigins.has(origin)) {
+      res.status(403).json({ error: "Origin not allowed" });
+      return;
+    }
+
+    res.header("Access-Control-Allow-Origin", origin);
+    res.header("Access-Control-Allow-Methods", "GET,POST,PATCH,OPTIONS");
+    res.header("Access-Control-Allow-Headers", "Content-Type");
+    if (req.method === "OPTIONS") {
+      res.status(204).end();
+      return;
+    }
+    next();
+  });
   app.use(express.json());
 
   const codexHome = options.codexHome ?? path.join(os.homedir(), ".codex");
@@ -44,6 +78,16 @@ export function createApp(options: AppOptions = {}) {
       options.desktopCodexPath ??
       path.join(os.homedir(), "Library", "Application Support", "Codex"),
     launchTerminal: options.launchTerminal ?? launchInTerminal
+  });
+
+  app.get("/bridge/health", (_req, res) => {
+    const payload: BridgeHealthPayload = {
+      status: "ok",
+      mode: "local-bridge",
+      bridgeBaseUrl: `http://127.0.0.1:${bridgePort}`,
+      hostedSiteUrl
+    };
+    res.json(payload);
   });
 
   app.post("/api/index/refresh", async (req, res, next) => {

@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { App } from "./App";
 
@@ -6,6 +6,7 @@ const fetchMock = vi.fn();
 
 beforeEach(() => {
   vi.stubGlobal("fetch", fetchMock);
+  window.history.replaceState({}, "", "/");
   Object.defineProperty(window, "innerWidth", {
     configurable: true,
     writable: true,
@@ -14,22 +15,105 @@ beforeEach(() => {
 });
 
 afterEach(() => {
+  cleanup();
   vi.unstubAllGlobals();
   fetchMock.mockReset();
 });
 
 describe("App", () => {
+  it("shows onboarding when local bridge is unavailable and retries into viewer mode", async () => {
+    let healthy = false;
+
+    fetchMock.mockImplementation(async (input: RequestInfo | URL) => {
+      const url = String(input);
+
+      if (url.includes("/bridge/health")) {
+        if (!healthy) {
+          return new Response(JSON.stringify({ error: "offline" }), { status: 503 });
+        }
+
+        return new Response(
+          JSON.stringify({
+            status: "ok",
+            mode: "local-bridge",
+            bridgeBaseUrl: "http://127.0.0.1:4318",
+            hostedSiteUrl: "https://viewer.example.com"
+          }),
+          { status: 200 }
+        );
+      }
+
+      if (url.includes("/api/projects")) {
+        return new Response(JSON.stringify({ items: [] }), { status: 200 });
+      }
+
+      if (url.includes("/api/threads")) {
+        return new Response(JSON.stringify({ items: [] }), { status: 200 });
+      }
+
+      return new Response("Not found", { status: 404 });
+    });
+
+    render(<App />);
+
+    await screen.findByText(/Local Bridge Required/i);
+    healthy = true;
+    fireEvent.click(screen.getByRole("button", { name: /retry bridge/i }));
+
+    await waitFor(() => {
+      expect(screen.queryByText(/Local Bridge Required/i)).not.toBeInTheDocument();
+    });
+    await screen.findByText(/Recent Projects/i);
+  });
+
+  it("renders a dedicated install route with install and doctor guidance", async () => {
+    window.history.replaceState({}, "", "/#/install");
+    fetchMock.mockImplementation(async () =>
+      new Response(
+        JSON.stringify({
+          status: "ok",
+          mode: "local-bridge",
+          bridgeBaseUrl: "http://127.0.0.1:4318",
+          hostedSiteUrl: "https://sivagao.github.io/codex_sessions_viewer/"
+        }),
+        { status: 200 }
+      )
+    );
+
+    render(<App />);
+
+    await screen.findByRole("heading", { level: 1, name: /install the local bridge/i });
+    expect(screen.getAllByText(/install\.sh/i)).toHaveLength(2);
+    expect(screen.getAllByText(/codex-sessions-viewer-doctor/i)).toHaveLength(2);
+    expect(screen.getByRole("link", { name: /open viewer/i })).toHaveAttribute(
+      "href",
+      "#/viewer"
+    );
+  });
+
   it("renders threads, applies filters, shows detail, and triggers refresh", async () => {
     fetchMock.mockImplementation(async (input: RequestInfo | URL, init?: RequestInit) => {
       const url = String(input);
 
-      if (url.includes("/api/index/refresh")) {
+      if (url.includes("/bridge/health")) {
+        return new Response(
+          JSON.stringify({
+            status: "ok",
+            mode: "local-bridge",
+            bridgeBaseUrl: "http://127.0.0.1:4318",
+            hostedSiteUrl: "https://viewer.example.com"
+          }),
+          { status: 200 }
+        );
+      }
+
+      if (url.includes("127.0.0.1:4318/api/index/refresh")) {
         return new Response(JSON.stringify({ stats: { threads: 1, events: 2 } }), {
           status: 200
         });
       }
 
-      if (url.includes("/api/threads/thread-main")) {
+      if (url.includes("127.0.0.1:4318/api/threads/thread-main")) {
         return new Response(
           JSON.stringify({
             thread: {
@@ -55,7 +139,7 @@ describe("App", () => {
         );
       }
 
-      if (url.includes("/api/projects")) {
+      if (url.includes("127.0.0.1:4318/api/projects")) {
         return new Response(
           JSON.stringify({
             items: [
@@ -71,7 +155,7 @@ describe("App", () => {
         );
       }
 
-      if (url.includes("/api/threads")) {
+      if (url.includes("127.0.0.1:4318/api/threads")) {
         const query = new URL(url, "http://localhost");
         const source = query.searchParams.get("sourceKind");
         const items =
@@ -113,7 +197,7 @@ describe("App", () => {
         return new Response(JSON.stringify({ items: filtered }), { status: 200 });
       }
 
-      if (url.includes("/api/threads/thread-main/resume")) {
+      if (url.includes("127.0.0.1:4318/api/threads/thread-main/resume")) {
         return new Response(
           JSON.stringify({
             launch: { command: "cd /tmp && codex resume thread-main" }
@@ -122,7 +206,7 @@ describe("App", () => {
         );
       }
 
-      if (url.includes("/api/exports")) {
+      if (url.includes("127.0.0.1:4318/api/exports")) {
         return new Response(JSON.stringify({ filePath: "/tmp/export.zip" }), {
           status: 200
         });
@@ -153,14 +237,15 @@ describe("App", () => {
 
     render(<App />);
 
+    await screen.findByRole("link", { name: /install bridge/i });
     await screen.findByText("Resume my thread");
     await screen.findByRole("button", { name: /codex_sessions_viewer/i });
 
-    fireEvent.click(screen.getByRole("button", { name: /refresh index/i }));
+    fireEvent.click(screen.getAllByRole("button", { name: /refresh index/i }).at(-1)!);
 
     await waitFor(() => {
       expect(fetchMock).toHaveBeenCalledWith(
-        "/api/index/refresh",
+        "http://127.0.0.1:4318/api/index/refresh",
         expect.objectContaining({ method: "POST" })
       );
     });
@@ -209,7 +294,7 @@ describe("App", () => {
     fireEvent.click(screen.getByRole("button", { name: /star session/i }));
     await waitFor(() => {
       expect(fetchMock).toHaveBeenCalledWith(
-        "/api/threads/thread-main/user-metadata",
+        "http://127.0.0.1:4318/api/threads/thread-main/user-metadata",
         expect.objectContaining({ method: "PATCH" })
       );
     });
@@ -217,7 +302,7 @@ describe("App", () => {
     fireEvent.click(screen.getByRole("button", { name: /resume/i }));
     await waitFor(() => {
       expect(fetchMock).toHaveBeenCalledWith(
-        "/api/threads/thread-main/resume",
+        "http://127.0.0.1:4318/api/threads/thread-main/resume",
         expect.objectContaining({ method: "POST" })
       );
     });

@@ -130,11 +130,31 @@ describe("createApp", () => {
       dataDir,
       codexHome,
       desktopCodexPath: path.join(codexHome, "..", "Library", "Application Support", "Codex"),
+      hostedSiteUrl: "https://viewer.example.com",
       launchTerminal(command) {
         launched.push(command);
         return { command, terminal: "Terminal.app" };
       }
     });
+
+    const health = await request(app)
+      .get("/bridge/health")
+      .set("Origin", "https://viewer.example.com")
+      .expect(200);
+
+    expect(health.headers["access-control-allow-origin"]).toBe("https://viewer.example.com");
+    expect(health.body).toEqual(
+      expect.objectContaining({
+        status: "ok",
+        mode: "local-bridge",
+        hostedSiteUrl: "https://viewer.example.com"
+      })
+    );
+
+    await request(app)
+      .get("/bridge/health")
+      .set("Origin", "https://evil.example.com")
+      .expect(403);
 
     const refresh = await request(app)
       .post("/api/index/refresh")

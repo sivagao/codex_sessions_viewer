@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
+  DEFAULT_BRIDGE_PORT,
+  DEFAULT_BRIDGE_PORT_FALLBACK,
+  DEFAULT_HOSTED_SITE_URL,
+  buildBridgeBaseUrls,
   classifyThreadSource,
   deriveThreadRelations,
   summarizeThreadText
@@ -77,5 +81,17 @@ describe("summarizeThreadText", () => {
         eventTexts: ["Search all sessions fast", "Resume from terminal"]
       })
     ).toContain("Search all sessions fast");
+  });
+});
+
+describe("bridge config", () => {
+  it("exposes deterministic localhost bridge URLs", () => {
+    expect(DEFAULT_BRIDGE_PORT).toBe(4318);
+    expect(DEFAULT_BRIDGE_PORT_FALLBACK).toBe(4319);
+    expect(buildBridgeBaseUrls()).toEqual([
+      "http://127.0.0.1:4318",
+      "http://127.0.0.1:4319"
+    ]);
+    expect(DEFAULT_HOSTED_SITE_URL).toBe("https://sivagao.github.io/codex_sessions_viewer/");
   });
 });

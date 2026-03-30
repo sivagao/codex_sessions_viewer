@@ -1,4 +1,14 @@
 export type ThreadSourceKind = "app" | "cli" | "subagent";
+export const DEFAULT_BRIDGE_PORT = 4318;
+export const DEFAULT_BRIDGE_PORT_FALLBACK = 4319;
+export const DEFAULT_HOSTED_SITE_URL = "https://sivagao.github.io/codex_sessions_viewer/";
+
+export interface BridgeHealthPayload {
+  status: "ok";
+  mode: "local-bridge";
+  bridgeBaseUrl: string;
+  hostedSiteUrl: string;
+}
 
 export interface ThreadClassificationInput {
   source: string;
@@ -102,4 +112,11 @@ export function summarizeThreadText(input: {
     .map((value) => value.trim())
     .filter(Boolean)
     .join(" ");
+}
+
+export function buildBridgeBaseUrls(host = "127.0.0.1"): string[] {
+  return [
+    `http://${host}:${DEFAULT_BRIDGE_PORT}`,
+    `http://${host}:${DEFAULT_BRIDGE_PORT_FALLBACK}`
+  ];
 }

@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { bridgeFetch, probeBridge } from "./lib/bridgeClient";
 
 interface ThreadListItem {
   id: string;
@@ -46,7 +47,29 @@ const sourceOptions = [
 
 const DETAIL_FOCUS_BREAKPOINT = 1480;
 
+function currentRoute() {
+  if (typeof window === "undefined") {
+    return "viewer";
+  }
+
+  return window.location.hash === "#/install" ? "install" : "viewer";
+}
+
+function currentHostedSiteUrl() {
+  if (typeof window === "undefined") {
+    return "";
+  }
+
+  return new URL(import.meta.env.BASE_URL, window.location.origin).toString();
+}
+
 export function App() {
+  const [route, setRoute] = useState<"viewer" | "install">(currentRoute);
+  const [bridgeBaseUrl, setBridgeBaseUrl] = useState<string | null>(null);
+  const [connectionState, setConnectionState] = useState<
+    "connecting" | "connected" | "disconnected"
+  >("connecting");
+  const [hostedSiteUrl, setHostedSiteUrl] = useState<string>(currentHostedSiteUrl);
   const [query, setQuery] = useState("");
   const [cwdPrefix, setCwdPrefix] = useState("");
   const [sourceKind, setSourceKind] = useState<(typeof sourceOptions)[number]["value"]>("all");
@@ -63,7 +86,24 @@ export function App() {
     typeof window !== "undefined" ? window.innerWidth < DETAIL_FOCUS_BREAKPOINT : false
   );
 
+  async function connectBridge() {
+    setConnectionState("connecting");
+    const health = await probeBridge();
+    if (!health) {
+      setConnectionState("disconnected");
+      setBridgeBaseUrl(null);
+      return;
+    }
+
+    setBridgeBaseUrl(health.bridgeBaseUrl);
+    setHostedSiteUrl(health.hostedSiteUrl);
+    setConnectionState("connected");
+  }
+
   async function loadThreads() {
+    if (!bridgeBaseUrl) {
+      return;
+    }
     const params = new URLSearchParams();
     if (query.trim()) {
       params.set("q", query.trim());
@@ -76,8 +116,10 @@ export function App() {
     }
     params.set("textScope", textScope);
 
-    const response = await fetch(`/api/threads?${params.toString()}`);
-    const data = (await response.json()) as { items: ThreadListItem[] };
+    const data = await bridgeFetch<{ items: ThreadListItem[] }>(
+      bridgeBaseUrl,
+      `/api/threads?${params.toString()}`
+    );
     setThreads(data.items);
 
     if (selectedThreadId && !data.items.some((thread) => thread.id === selectedThreadId)) {
@@ -87,22 +129,39 @@ export function App() {
   }
 
   async function loadDetail(threadId: string) {
-    const response = await fetch(`/api/threads/${threadId}`);
-    const data = (await response.json()) as ThreadDetail;
+    if (!bridgeBaseUrl) {
+      return;
+    }
+    const data = await bridgeFetch<ThreadDetail>(bridgeBaseUrl, `/api/threads/${threadId}`);
     setDetail(data);
   }
 
   useEffect(() => {
-    void loadThreads();
-  }, [query, sourceKind, cwdPrefix, textScope]);
+    function syncRoute() {
+      setRoute(currentRoute());
+    }
+
+    syncRoute();
+    window.addEventListener("hashchange", syncRoute);
+    return () => window.removeEventListener("hashchange", syncRoute);
+  }, []);
 
   useEffect(() => {
-    void (async () => {
-      const response = await fetch("/api/projects");
-      const data = (await response.json()) as { items: ProjectSuggestion[] };
-      setProjects(data.items);
-    })();
+    void connectBridge();
   }, []);
+
+  useEffect(() => {
+    if (connectionState === "connected" && route === "viewer") {
+      void loadThreads();
+      void (async () => {
+        if (!bridgeBaseUrl) {
+          return;
+        }
+        const data = await bridgeFetch<{ items: ProjectSuggestion[] }>(bridgeBaseUrl, "/api/projects");
+        setProjects(data.items);
+      })();
+    }
+  }, [connectionState, bridgeBaseUrl, query, sourceKind, cwdPrefix, textScope, route]);
 
   useEffect(() => {
     if (selectedThreadId) {
@@ -122,53 +181,52 @@ export function App() {
 
   async function refreshIndex() {
     setStatus("Refreshing index...");
-    const response = await fetch("/api/index/refresh", {
+    if (!bridgeBaseUrl) {
+      return;
+    }
+    const data = await bridgeFetch<{ stats?: { threads: number } }>(bridgeBaseUrl, "/api/index/refresh", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ mode: "full" })
     });
-    const data = (await response.json()) as { stats?: { threads: number } };
     setStatus(`Indexed ${data.stats?.threads ?? 0} threads.`);
     await loadThreads();
-    const projectsResponse = await fetch("/api/projects");
-    const projectsData = (await projectsResponse.json()) as { items: ProjectSuggestion[] };
+    const projectsData = await bridgeFetch<{ items: ProjectSuggestion[] }>(bridgeBaseUrl, "/api/projects");
     setProjects(projectsData.items);
   }
 
   async function resumeSelectedThread() {
-    if (!selectedThreadId) {
+    if (!selectedThreadId || !bridgeBaseUrl) {
       return;
     }
 
-    const response = await fetch(`/api/threads/${selectedThreadId}/resume`, {
+    const data = await bridgeFetch<{ launch?: { command?: string } }>(bridgeBaseUrl, `/api/threads/${selectedThreadId}/resume`, {
       method: "POST"
     });
-    const data = (await response.json()) as { launch?: { command?: string } };
     setStatus(
       data.launch?.command ? `Resume launched: ${data.launch.command}` : "Resume launched."
     );
   }
 
   async function exportSelectedThread() {
-    if (!selectedThreadId) {
+    if (!selectedThreadId || !bridgeBaseUrl) {
       return;
     }
 
-    const response = await fetch("/api/exports", {
+    const data = await bridgeFetch<{ filePath?: string }>(bridgeBaseUrl, "/api/exports", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ threadIds: [selectedThreadId] })
     });
-    const data = (await response.json()) as { filePath?: string };
     setStatus(data.filePath ? `Exported to ${data.filePath}` : "Export complete.");
   }
 
   async function toggleFavorite() {
-    if (!detail) {
+    if (!detail || !bridgeBaseUrl) {
       return;
     }
 
-    const response = await fetch(`/api/threads/${detail.thread.id}/user-metadata`, {
+    const data = await bridgeFetch<{ thread?: ThreadListItem }>(bridgeBaseUrl, `/api/threads/${detail.thread.id}/user-metadata`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -179,7 +237,6 @@ export function App() {
         projectAlias: detail.thread.projectAlias
       })
     });
-    const data = (await response.json()) as { thread?: ThreadListItem };
     if (data.thread) {
       setDetail((current) =>
         current
@@ -207,6 +264,89 @@ export function App() {
   const visibleEvents =
     detail?.events.filter((event) => showSystemMessages || event.actor !== "system") ?? [];
   const detailFocus = Boolean(selectedThreadId) && (listCollapsed || autoFocusDetail);
+  const resolvedHostedSiteUrl = hostedSiteUrl || currentHostedSiteUrl() || "configured by deploy";
+
+  if (route === "install") {
+    return (
+      <div className="app-shell">
+        <header className="hero">
+          <div>
+            <p className="eyebrow">Bridge Install</p>
+            <h1>Install the Local Bridge</h1>
+            <p className="hero-copy">
+              Download the bridge package on each Mac, install it once, and then use the hosted
+              viewer against your own localhost session index.
+            </p>
+          </div>
+          <a className="primary-button link-button" href="#/viewer">
+            Open Viewer
+          </a>
+        </header>
+        <section className="workspace onboarding-shell">
+          <aside className="detail-panel onboarding-panel">
+            <p className="eyebrow">New Mac Setup</p>
+            <h2>Install the Local Bridge</h2>
+            <ol className="install-steps">
+              <li>Download the packaged bridge tarball.</li>
+              <li>Extract it and run <code>./install.sh</code>.</li>
+              <li>Run <code>codex-sessions-viewer-doctor</code> to verify localhost health.</li>
+              <li>Run <code>codex-sessions-viewer-open</code> to open the hosted viewer.</li>
+            </ol>
+            <pre className="doctor-block">
+{`./install.sh
+codex-sessions-viewer-doctor
+codex-sessions-viewer-open`}
+            </pre>
+            <p className="status-line">
+              Hosted viewer URL: {resolvedHostedSiteUrl}
+            </p>
+          </aside>
+        </section>
+      </div>
+    );
+  }
+
+  if (connectionState !== "connected") {
+    return (
+      <div className="app-shell">
+        <header className="hero">
+          <div>
+            <p className="eyebrow">Hosted Site Shell</p>
+            <h1>Codex Sessions Viewer</h1>
+            <p className="hero-copy">
+              This site needs a local bridge daemon on your Mac to read local Codex sessions.
+            </p>
+          </div>
+        </header>
+        <section className="workspace onboarding-shell">
+          <aside className="detail-panel onboarding-panel">
+            <p className="eyebrow">Bridge Status</p>
+            <h2>Local Bridge Required</h2>
+            <p>
+              Start the local daemon on this machine, then retry. The hosted site stays generic;
+              your session data remains on localhost.
+            </p>
+            <div className="detail-actions">
+              <button onClick={() => void connectBridge()}>Retry Bridge</button>
+              <a className="link-button inline-link-button" href="#/install">
+                Install Bridge
+              </a>
+            </div>
+            <pre className="doctor-block">
+{`pnpm bridge:start
+pnpm bridge:open
+pnpm bridge:doctor`}
+            </pre>
+            <p className="status-line">
+              {connectionState === "connecting"
+                ? "Checking localhost bridge…"
+                : `Bridge offline. Hosted URL: ${resolvedHostedSiteUrl}`}
+            </p>
+          </aside>
+        </section>
+      </div>
+    );
+  }
 
   return (
     <div className="app-shell">
@@ -219,9 +359,14 @@ export function App() {
             and jump back into resume without hunting through disk.
           </p>
         </div>
-        <button className="primary-button" onClick={() => void refreshIndex()}>
-          Refresh Index
-        </button>
+        <div className="detail-actions">
+          <a className="link-button inline-link-button" href="#/install">
+            Install Bridge
+          </a>
+          <button className="primary-button" onClick={() => void refreshIndex()}>
+            Refresh Index
+          </button>
+        </div>
       </header>
 
       <section className={detailFocus ? "workspace detail-focus" : "workspace"}>
