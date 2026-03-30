@@ -5,8 +5,8 @@ import {
   createThreadStore,
   type ThreadSearchInput,
   type ThreadSearchRow
-} from "../db/threadStore";
-import { scanCodexSources } from "../scanners/codexScanner";
+} from "../db/threadStore.js";
+import { scanCodexSources } from "../scanners/codexScanner.js";
 
 export interface TerminalLaunchResult {
   command: string;

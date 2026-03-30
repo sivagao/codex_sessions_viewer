@@ -1,8 +1,8 @@
 import fs from "node:fs";
 import path from "node:path";
-import type { ThreadRelationRow } from "../db/threadStore";
-import type { IndexedThreadEventRecord } from "../db/threadStore";
-import type { ThreadDetailRow } from "../db/threadStore";
+import type { ThreadRelationRow } from "../db/threadStore.js";
+import type { IndexedThreadEventRecord } from "../db/threadStore.js";
+import type { ThreadDetailRow } from "../db/threadStore.js";
 import yazl from "yazl";
 
 export interface ThreadExportBundle {

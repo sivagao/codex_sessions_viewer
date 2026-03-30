@@ -8,12 +8,12 @@ import {
   summarizeThreadText,
   type ThreadEventRecord
 } from "@csv/core";
-import { extractThreadEventsFromJsonl } from "./codexJsonl";
+import { extractThreadEventsFromJsonl } from "./codexJsonl.js";
 import type {
   IndexedThreadEventRecord,
   IndexedThreadRecord,
   ThreadRelationRow
-} from "../db/threadStore";
+} from "../db/threadStore.js";
 
 interface ThreadRow {
   id: string;

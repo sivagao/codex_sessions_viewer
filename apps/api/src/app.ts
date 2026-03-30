@@ -8,9 +8,9 @@ import {
   type BridgeHealthPayload,
   type UserMetadata
 } from "@csv/core";
-import { createCodexIndexService, type TerminalLaunchResult } from "./services/codexIndexService";
-import { writeExportArchive } from "./utils/exporter";
-import { launchInTerminal } from "./utils/terminal";
+import { createCodexIndexService, type TerminalLaunchResult } from "./services/codexIndexService.js";
+import { writeExportArchive } from "./utils/exporter.js";
+import { launchInTerminal } from "./utils/terminal.js";
 
 const refreshSchema = z.object({
   mode: z.enum(["full", "incremental"]).default("full")

@@ -1,5 +1,5 @@
 import { execFileSync } from "node:child_process";
-import type { TerminalLaunchResult } from "../services/codexIndexService";
+import type { TerminalLaunchResult } from "../services/codexIndexService.js";
 
 export function buildTerminalAppleScript(command: string) {
   const escapedCommand = command.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
