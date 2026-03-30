@@ -1,0 +1,48 @@
+name: Release Bridge
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: bridge-release
+  cancel-in-progress: true
+
+jobs:
+  package:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.28.2
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm package:mac
+      - name: Publish rolling bridge release
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          ASSET="release/codex-sessions-viewer-bridge-macos.tar.gz"
+          if gh release view bridge-latest >/dev/null 2>&1; then
+            gh release upload bridge-latest "$ASSET" --clobber
+            gh release edit bridge-latest \
+              --title "Bridge Latest" \
+              --notes "Latest rolling macOS bridge package built from main." \
+              --latest
+          else
+            gh release create bridge-latest "$ASSET" \
+              --target "$GITHUB_SHA" \
+              --title "Bridge Latest" \
+              --notes "Latest rolling macOS bridge package built from main." \
+              --latest
+          fi

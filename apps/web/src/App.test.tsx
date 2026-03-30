@@ -89,6 +89,10 @@ describe("App", () => {
       "href",
       "#/viewer"
     );
+    expect(screen.getByRole("link", { name: /download bridge/i })).toHaveAttribute(
+      "href",
+      "https://github.com/sivagao/codex_sessions_viewer/releases/download/bridge-latest/codex-sessions-viewer-bridge-macos.tar.gz"
+    );
   });
 
   it("renders threads, applies filters, shows detail, and triggers refresh", async () => {

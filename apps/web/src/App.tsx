@@ -46,6 +46,8 @@ const sourceOptions = [
 ] as const;
 
 const DETAIL_FOCUS_BREAKPOINT = 1480;
+const BRIDGE_DOWNLOAD_URL =
+  "https://github.com/sivagao/codex_sessions_viewer/releases/download/bridge-latest/codex-sessions-viewer-bridge-macos.tar.gz";
 
 function currentRoute() {
   if (typeof window === "undefined") {
@@ -278,20 +280,31 @@ export function App() {
               viewer against your own localhost session index.
             </p>
           </div>
-          <a className="primary-button link-button" href="#/viewer">
-            Open Viewer
-          </a>
+          <div className="detail-actions">
+            <a className="primary-button link-button" href={BRIDGE_DOWNLOAD_URL}>
+              Download Bridge
+            </a>
+            <a className="link-button inline-link-button" href="#/viewer">
+              Open Viewer
+            </a>
+          </div>
         </header>
         <section className="workspace onboarding-shell">
           <aside className="detail-panel onboarding-panel">
             <p className="eyebrow">New Mac Setup</p>
             <h2>Install the Local Bridge</h2>
             <ol className="install-steps">
-              <li>Download the packaged bridge tarball.</li>
+              <li>Download the packaged bridge tarball from GitHub Releases.</li>
               <li>Extract it and run <code>./install.sh</code>.</li>
               <li>Run <code>codex-sessions-viewer-doctor</code> to verify localhost health.</li>
               <li>Run <code>codex-sessions-viewer-open</code> to open the hosted viewer.</li>
             </ol>
+            <p>
+              Stable download URL:{" "}
+              <a className="inline-link-button" href={BRIDGE_DOWNLOAD_URL}>
+                bridge-latest
+              </a>
+            </p>
             <pre className="doctor-block">
 {`./install.sh
 codex-sessions-viewer-doctor
@@ -328,6 +341,9 @@ codex-sessions-viewer-open`}
             </p>
             <div className="detail-actions">
               <button onClick={() => void connectBridge()}>Retry Bridge</button>
+              <a className="link-button inline-link-button" href={BRIDGE_DOWNLOAD_URL}>
+                Download Bridge
+              </a>
               <a className="link-button inline-link-button" href="#/install">
                 Install Bridge
               </a>
