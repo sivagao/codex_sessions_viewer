@@ -50,6 +50,7 @@ writeExecutable(
   `#!/bin/zsh
 set -euo pipefail
 DIR="$(cd "$(dirname "$0")/.." && pwd)"
+export CSV_DATA_DIR="$DIR/data"
 exec node "$DIR/dist/apps/api/src/daemon.js" "$@"
 `
 );
@@ -59,6 +60,7 @@ writeExecutable(
   `#!/bin/zsh
 set -euo pipefail
 DIR="$(cd "$(dirname "$0")/.." && pwd)"
+export CSV_DATA_DIR="$DIR/data"
 exec node "$DIR/dist/apps/api/src/daemon.js" open
 `
 );
@@ -68,6 +70,7 @@ writeExecutable(
   `#!/bin/zsh
 set -euo pipefail
 DIR="$(cd "$(dirname "$0")/.." && pwd)"
+export CSV_DATA_DIR="$DIR/data"
 exec node "$DIR/dist/apps/api/src/daemon.js" doctor
 `
 );
