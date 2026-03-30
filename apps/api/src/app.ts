@@ -65,6 +65,7 @@ export function createApp(options: AppOptions = {}) {
     res.header("Access-Control-Allow-Origin", origin);
     res.header("Access-Control-Allow-Methods", "GET,POST,PATCH,OPTIONS");
     res.header("Access-Control-Allow-Headers", "Content-Type");
+    res.header("Access-Control-Allow-Private-Network", "true");
     if (req.method === "OPTIONS") {
       res.status(204).end();
       return;
