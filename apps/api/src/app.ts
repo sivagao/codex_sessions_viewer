@@ -40,9 +40,10 @@ export interface AppOptions {
 export function createApp(options: AppOptions = {}) {
   const app = express();
   const hostedSiteUrl = options.hostedSiteUrl ?? process.env.CSV_HOSTED_SITE_URL ?? DEFAULT_HOSTED_SITE_URL;
+  const hostedOrigin = new URL(hostedSiteUrl).origin;
   const bridgePort = options.bridgePort ?? Number(process.env.PORT ?? DEFAULT_BRIDGE_PORT);
   const allowedOrigins = new Set([
-    hostedSiteUrl,
+    hostedOrigin,
     "http://localhost:4173",
     "http://127.0.0.1:4173"
   ]);
