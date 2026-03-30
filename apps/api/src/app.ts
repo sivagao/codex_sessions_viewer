@@ -166,7 +166,10 @@ export function createApp(options: AppOptions = {}) {
     try {
       const { threadIds, projectKey, contentScope } = exportSchema.parse(req.body ?? {});
       const result = service.exportThreads({ threadIds, projectKey, contentScope });
-      await writeExportArchive(result.filePath, result.threads);
+      await writeExportArchive(result.filePath, result.threads, {
+        projectKey,
+        contentScope
+      });
       res.json({ filePath: result.filePath, count: result.threads.length });
     } catch (error) {
       next(error);

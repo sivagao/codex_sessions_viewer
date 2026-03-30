@@ -1,4 +1,5 @@
 import fs from "node:fs";
+import os from "node:os";
 import path from "node:path";
 import type { UserMetadata } from "@csv/core";
 import {
@@ -52,7 +53,7 @@ export interface ThreadSearchFilters extends ThreadSearchInput {
 export function createCodexIndexService(options: CodexIndexServiceOptions) {
   fs.mkdirSync(options.dataDir, { recursive: true });
   const store = createThreadStore(path.join(options.dataDir, "viewer.db"));
-  const exportsDir = path.join(options.dataDir, "exports");
+  const exportsDir = path.join(os.homedir(), "Downloads");
   fs.mkdirSync(exportsDir, { recursive: true });
 
   return {
