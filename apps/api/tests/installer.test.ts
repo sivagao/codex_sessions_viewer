@@ -22,6 +22,7 @@ describe("installer rendering", () => {
     const installScript = renderInstallScript();
     expect(installScript).toContain("launchctl bootstrap");
     expect(installScript).toContain("launchctl kickstart");
+    expect(installScript).toContain("npm rebuild better-sqlite3");
     expect(installScript).toContain("Library/Application Support/CodexSessionsViewerBridge");
     expect(installScript).toContain(".local/bin");
     expect(installScript).toContain("Opening viewer...");

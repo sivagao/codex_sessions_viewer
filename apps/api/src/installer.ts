@@ -53,6 +53,9 @@ chmod +x "$INSTALL_DIR/bin/codex-sessions-viewer-daemon"
 chmod +x "$INSTALL_DIR/bin/codex-sessions-viewer-open"
 chmod +x "$INSTALL_DIR/bin/codex-sessions-viewer-doctor"
 
+echo "Rebuilding native dependencies for local Node..."
+npm rebuild better-sqlite3 --prefix "$INSTALL_DIR"
+
 ln -sf "$INSTALL_DIR/bin/codex-sessions-viewer-daemon" "$USER_BIN_DIR/codex-sessions-viewer-daemon"
 ln -sf "$INSTALL_DIR/bin/codex-sessions-viewer-open" "$USER_BIN_DIR/codex-sessions-viewer-open"
 ln -sf "$INSTALL_DIR/bin/codex-sessions-viewer-doctor" "$USER_BIN_DIR/codex-sessions-viewer-doctor"
