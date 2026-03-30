@@ -47,6 +47,10 @@ describe("App", () => {
         return new Response(JSON.stringify({ items: [] }), { status: 200 });
       }
 
+      if (url.includes("/api/index/refresh")) {
+        return new Response(JSON.stringify({ stats: { threads: 0 } }), { status: 200 });
+      }
+
       if (url.includes("/api/threads")) {
         return new Response(JSON.stringify({ items: [] }), { status: 200 });
       }
@@ -310,5 +314,68 @@ describe("App", () => {
         expect.objectContaining({ method: "POST" })
       );
     });
+  });
+
+  it("auto-refreshes the index once when the bridge connects but the initial list is empty", async () => {
+    let refreshCount = 0;
+
+    fetchMock.mockImplementation(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input);
+
+      if (url.includes("/bridge/health")) {
+        return new Response(
+          JSON.stringify({
+            status: "ok",
+            mode: "local-bridge",
+            bridgeBaseUrl: "http://127.0.0.1:4318",
+            hostedSiteUrl: "https://viewer.example.com"
+          }),
+          { status: 200 }
+        );
+      }
+
+      if (url.includes("127.0.0.1:4318/api/projects")) {
+        return new Response(JSON.stringify({ items: [] }), { status: 200 });
+      }
+
+      if (url.includes("127.0.0.1:4318/api/index/refresh")) {
+        refreshCount += 1;
+        return new Response(JSON.stringify({ stats: { threads: 1 } }), { status: 200 });
+      }
+
+      if (url.includes("127.0.0.1:4318/api/threads")) {
+        if (refreshCount === 0) {
+          return new Response(JSON.stringify({ items: [] }), { status: 200 });
+        }
+
+        return new Response(
+          JSON.stringify({
+            items: [
+              {
+                id: "thread-bootstrap",
+                title: "Recovered thread",
+                sourceKind: "cli",
+                cwd: "/Users/siva/projects/siva_context/codex_sessions_viewer",
+                updatedAt: "2026-03-30T06:00:00Z",
+                favorite: false,
+                hidden: false,
+                tags: [],
+                note: "",
+                projectAlias: "",
+                hasAgents: false
+              }
+            ]
+          }),
+          { status: 200 }
+        );
+      }
+
+      return new Response("Not found", { status: 404 });
+    });
+
+    render(<App />);
+
+    await screen.findByText(/Recovered thread/i);
+    expect(refreshCount).toBe(1);
   });
 });

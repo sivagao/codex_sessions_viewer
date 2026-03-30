@@ -88,6 +88,8 @@ export function App() {
     typeof window !== "undefined" ? window.innerWidth < DETAIL_FOCUS_BREAKPOINT : false
   );
   const [autoRetryCount, setAutoRetryCount] = useState(0);
+  const [threadsLoaded, setThreadsLoaded] = useState(false);
+  const [startupIndexAttempted, setStartupIndexAttempted] = useState(false);
 
   async function connectBridge() {
     setConnectionState("connecting");
@@ -107,6 +109,7 @@ export function App() {
     if (!bridgeBaseUrl) {
       return;
     }
+    setThreadsLoaded(false);
     const params = new URLSearchParams();
     if (query.trim()) {
       params.set("q", query.trim());
@@ -124,6 +127,7 @@ export function App() {
       `/api/threads?${params.toString()}`
     );
     setThreads(data.items);
+    setThreadsLoaded(true);
 
     if (selectedThreadId && !data.items.some((thread) => thread.id === selectedThreadId)) {
       setSelectedThreadId(null);
@@ -156,6 +160,7 @@ export function App() {
   useEffect(() => {
     if (connectionState === "connected" && route === "viewer") {
       setAutoRetryCount(0);
+      setStartupIndexAttempted(false);
       void loadThreads();
       void (async () => {
         if (!bridgeBaseUrl) {
@@ -196,15 +201,48 @@ export function App() {
     return () => window.clearTimeout(timer);
   }, [autoRetryCount, connectionState, route]);
 
-  async function refreshIndex() {
-    setStatus("Refreshing index...");
+  useEffect(() => {
+    const usingDefaultFilters =
+      query.trim() === "" &&
+      cwdPrefix.trim() === "" &&
+      sourceKind === "all" &&
+      textScope === "user";
+
+    if (
+      route !== "viewer" ||
+      connectionState !== "connected" ||
+      !threadsLoaded ||
+      threads.length > 0 ||
+      startupIndexAttempted ||
+      !usingDefaultFilters
+    ) {
+      return;
+    }
+
+    setStartupIndexAttempted(true);
+    setStatus("Building local index from Codex sessions...");
+    void refreshIndex("full");
+  }, [
+    connectionState,
+    cwdPrefix,
+    query,
+    route,
+    sourceKind,
+    startupIndexAttempted,
+    textScope,
+    threads.length,
+    threadsLoaded
+  ]);
+
+  async function refreshIndex(mode: "full" | "incremental" = "full") {
+    setStatus(mode === "full" ? "Refreshing index..." : "Refreshing recent sessions...");
     if (!bridgeBaseUrl) {
       return;
     }
     const data = await bridgeFetch<{ stats?: { threads: number } }>(bridgeBaseUrl, "/api/index/refresh", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ mode: "full" })
+      body: JSON.stringify({ mode })
     });
     setStatus(`Indexed ${data.stats?.threads ?? 0} threads.`);
     await loadThreads();
