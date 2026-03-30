@@ -17,9 +17,8 @@ export function renderLaunchAgentPlist(installDir: string) {
     <string>${LAUNCH_AGENT_LABEL}</string>
     <key>ProgramArguments</key>
     <array>
-      <string>/bin/zsh</string>
-      <string>-lc</string>
-      <string>${installDir}/bin/codex-sessions-viewer-daemon start</string>
+      <string>${installDir}/bin/codex-sessions-viewer-daemon</string>
+      <string>start</string>
     </array>
     <key>RunAtLoad</key>
     <true/>
@@ -60,6 +59,7 @@ ln -sf "$INSTALL_DIR/bin/codex-sessions-viewer-doctor" "$USER_BIN_DIR/codex-sess
 
 launchctl bootout gui/"$(id -u)" "$PLIST_PATH" >/dev/null 2>&1 || true
 launchctl bootstrap gui/"$(id -u)" "$PLIST_PATH"
+launchctl kickstart -k gui/"$(id -u)"/${LAUNCH_AGENT_LABEL} >/dev/null 2>&1 || true
 
 echo "Installed Codex Sessions Viewer Bridge to $INSTALL_DIR"
 echo "Installed shell links in $USER_BIN_DIR"

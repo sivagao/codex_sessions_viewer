@@ -18,6 +18,7 @@ export interface RunDaemonCommandOptions {
   checkHealth?(port: number): Promise<boolean | null>;
   spawnDetachedBridge?(command: string): void;
   openBrowser?(url: string): void;
+  waitForHealth?(port: number): Promise<boolean>;
 }
 
 export async function runDaemonCommand(
@@ -32,6 +33,7 @@ export async function runDaemonCommand(
     const healthy = await (options.checkHealth ?? checkHealth)(bridgePort);
     if (!healthy) {
       (options.spawnDetachedBridge ?? spawnDetachedBridge)("start");
+      await (options.waitForHealth ?? waitForHealth)(bridgePort);
     }
     (options.openBrowser ?? openBrowser)(hostedSiteUrl);
     return { mode: "open", message: `Opened ${hostedSiteUrl}` };
@@ -66,21 +68,33 @@ async function checkHealth(port: number) {
 }
 
 function spawnDetachedBridge(command: string) {
+  const scriptPath = process.argv[1];
+  if (!scriptPath) {
+    throw new Error("Cannot determine daemon entrypoint");
+  }
+
   const child = spawn(
-    "pnpm",
-    [
-      "--filter",
-      "@csv/api",
-      "daemon",
-      command
-    ],
+    process.execPath,
+    [scriptPath, command],
     {
       detached: true,
       stdio: "ignore",
-      cwd: path.resolve(process.cwd(), "../..")
+      cwd: path.dirname(scriptPath)
     }
   );
   child.unref();
+}
+
+async function waitForHealth(port: number) {
+  for (let attempt = 0; attempt < 20; attempt += 1) {
+    const healthy = await checkHealth(port);
+    if (healthy) {
+      return true;
+    }
+    await new Promise((resolve) => setTimeout(resolve, 250));
+  }
+
+  return false;
 }
 
 function openBrowser(url: string) {

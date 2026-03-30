@@ -17,9 +17,11 @@ describe("installer rendering", () => {
     const plist = renderLaunchAgentPlist("/Users/siva/Library/Application Support/CodexSessionsViewerBridge");
     expect(plist).toContain("local.codex-sessions-viewer.bridge");
     expect(plist).toContain("codex-sessions-viewer-daemon");
+    expect(plist).not.toContain("/bin/zsh");
 
     const installScript = renderInstallScript();
     expect(installScript).toContain("launchctl bootstrap");
+    expect(installScript).toContain("launchctl kickstart");
     expect(installScript).toContain("Library/Application Support/CodexSessionsViewerBridge");
     expect(installScript).toContain(".local/bin");
     expect(installScript).toContain("Opening viewer...");
